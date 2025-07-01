@@ -1,6 +1,7 @@
 import {useState, useEffect} from 'react'
 import { Menu, X } from 'lucide-react'
 import { useNavigate, Link } from 'react-router-dom'
+import FifthSenseLogo from '../assets/imgs/logo.jsx'
 
 const Navbar = () => {
     const [scrolled, setScrolled] = useState(false);
@@ -24,9 +25,10 @@ const Navbar = () => {
           : 'bg-gray-900/80 backdrop-blur-md'
       }`}>
         <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
-          <div className="flex justify-between items-center h-16">
-            <Link to='/' className="text-2xl font-black bg-gradient-to-r from-purple-600 to-blue-600 bg-clip-text text-transparent">
-              DataFlow
+          <div className="flex justify-between items-center h-32">
+            <Link to='/' className="text-2xl font-black bg-gradient-to-r from-purple-600 to-blue-600 bg-clip-text text-transparent flex gap-2 items-center">
+              <FifthSenseLogo size={50} className="" />
+              FifthSense
             </Link>
             
             <div className="hidden md:flex space-x-8">
