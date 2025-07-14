@@ -17,16 +17,16 @@ if (!admin.apps.length) {
 const verifyToken = async (req, res, next) => {
     const authHeader = req.headers.authorization
     if (!authHeader || !authHeader.startsWith('Bearer ')) {
-        return res.status((401).json({error: 'Invalid authorization header format'}))
+        return res.status(401).json({ error: 'Invalid authorization header format' })
     }
 
     const token = authHeader.split(' ')[1]
     if (!token) {
-        return res.status((401).json({error: 'Missing Token'}))
+        return res.status(401).json({error: 'Missing Token'})
     }
 
     try {
-        const decoded = admin.auth().verifyIdToken(token)
+        const decoded = await admin.auth().verifyIdToken(token)
         req.user = decoded
         console.log('Decoded User Verified', decoded)
 

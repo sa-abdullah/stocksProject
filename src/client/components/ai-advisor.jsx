@@ -1,4 +1,5 @@
 import React, { useState, useEffect, useRef } from 'react';
+import axios from 'axios'
 import { LineChart, Line, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer, PieChart, Pie, Cell } from 'recharts';
 import { 
   TrendingUp, 
@@ -32,6 +33,36 @@ import {
   Smile
 } from 'lucide-react';
 import { useGlobal } from './global.jsx'
+import { getAuth } from 'firebase/auth';
+
+
+const getUserToken = async () => {
+  const user = getAuth().currentUser;
+  // if (!user) throw new Error('User not authenticated');
+  if (!user) {
+    window.location.href = '/auth';
+    throw new Error('Redirecting to login');
+  }
+
+  return await user.getIdToken();
+};
+
+const sendSecureMessage = async (question, profile = {}) => {
+  const token = await getUserToken();
+
+  const response = await axios.post(
+    '/api/advisor/ask',
+    { question, profile },
+    {
+      headers: {
+        Authorization: `Bearer ${token}`
+      }
+    }
+  );
+
+  return response.data;
+};
+
 
 const AIAdvisor = () => {
   const { activeTab, setActiveTab } = useGlobal();
@@ -137,65 +168,102 @@ const AIAdvisor = () => {
       setIsTyping(true);
 
       // Simulate AI response delay
-      setTimeout(() => {
+      setTimeout( async () => {
         const aiResponse = {
           id: Date.now() + 1,
           type: 'ai',
-          content: getAdvisorResponse(chatInput),
+          content: 'Just a sec...',
           timestamp: new Date(),
-          suggestions: getContextualSuggestions(chatInput)
+          suggestions: [], 
+          analysis: null
         };
         setMessages(prev => [...prev, aiResponse]);
-        setIsTyping(false);
+
+        try {
+          const res = await sendSecureMessage(chatInput, {
+            risk: 'balanced',
+            budget: 150000,
+            horizon: '3 years'
+          });
+
+          const answer = res?.answer ?? {}
+
+          
+          setMessages(prev => [
+              ...prev.slice(0, -1), 
+              {
+                ...aiResponse, 
+                content: answer?.content || 'Sorry, I could not process your request', 
+                suggestions: Array.isArray(answer?.suggestions) ? answer?.suggestions : [],  // optional
+                analysis: typeof answer.analysis === 'object' ? answer.analysis : null       // optional
+              }
+            ]);
+
+        } catch(err) {
+
+          console.error(err)
+          setMessages(prev => [
+            ...prev.slice(0, -1), 
+            {
+              ...aiResponse, 
+              content: 'Error: Failed to connect to the AI advisor.'
+            }
+          ])
+        } finally {
+          setIsTyping(false);
+        }
+
       }, 1500 + Math.random() * 1000);
     }
   };
 
-  const getAdvisorResponse = (question) => {
-    const lowerQuestion = question.toLowerCase();
-    
-    if (lowerQuestion.includes('market') || lowerQuestion.includes('outlook')) {
-      return "The Nigerian market is showing strong momentum driven by banking sector performance and improved macroeconomic indicators. Key trends:\n\n📊 **NGX ASI Performance**: Up 18% YTD, outperforming emerging market peers\n\n🏦 **Banking Dominance**: Tier-1 banks leading with strong Q3 earnings\n\n📈 **Sector Rotation**: From defensive to cyclical stocks as confidence improves\n\n🎯 **My Take**: Current market conditions favor your balanced approach. Consider increasing exposure to quality growth names while maintaining defensive positions.";
-    }
-    
-    if (lowerQuestion.includes('tech') || lowerQuestion.includes('technology')) {
-      return "Nigerian tech stocks offer compelling growth opportunities but require careful selection:\n\n🚀 **Growth Drivers**:\n• Digital payments adoption accelerating\n• Fintech regulation becoming clearer\n• 5G infrastructure rollout\n\n⚠️ **Risks to Consider**:\n• Valuation concerns in some names\n• Regulatory uncertainty\n• FX exposure for dollar-revenue companies\n\n🎯 **Recommendation**: Limit tech to 15-20% of portfolio. Focus on profitable companies with naira revenue streams.";
-    }
-    
-    if (lowerQuestion.includes('inflation') || lowerQuestion.includes('hedge')) {
-      return "Inflation hedging in Nigeria requires a multi-asset approach:\n\n🛡️ **Inflation Hedges**:\n• Banking stocks (benefit from rising rates)\n• Consumer staples with pricing power\n• Real estate investment trusts (REITs)\n• Select commodity-linked stocks\n\n💡 **Strategy for You**:\nGiven your ₦150k monthly budget, focus on assets that can pass through inflation costs. Banking and consumer goods stocks in your current allocation already provide some protection.\n\n🎯 Consider adding REIT exposure for real estate inflation hedge.";
-    }
-    
-    if (lowerQuestion.includes('dividend') || lowerQuestion.includes('income')) {
-      return "Top dividend opportunities in the current market:\n\n👑 **Dividend Champions**:\n• GTB: 8.2% yield, 15-year track record\n• Zenith Bank: 7.8% yield, consistent payout\n• Nigerian Breweries: 6.5% yield, defensive\n• Dangote Cement: 5.2% yield, infrastructure play\n\n📊 **Dividend Safety Analysis**:\n✅ Banking dividends well-covered by earnings\n✅ Consumer goods showing resilient cash flows\n⚠️ Industrial dividends under pressure\n\n🎯 **For Your Portfolio**: Banking-heavy dividend strategy aligns perfectly with your income goals and risk profile.";
-    }
-    
-    // Default responses for other queries
-    const responses = [
-      "Based on your balanced risk profile and 3-year investment horizon, I recommend maintaining a diversified approach across sectors. The current market environment favors quality stocks with strong fundamentals.",
-      "Given your ₦150k monthly budget, dollar-cost averaging remains your best strategy. This approach reduces timing risk and allows you to benefit from market volatility over your 3-year timeline.",
-      "Your current allocation strategy is sound. The Nigerian market's recent performance in banking and consumer goods sectors aligns well with your investment objectives and risk tolerance.",
-      "For your investment timeline and goals, focus on companies with sustainable competitive advantages and consistent cash generation. This approach has historically outperformed in the Nigerian market.",
-      "Market conditions are creating opportunities for patient investors with your investment approach. Your balanced strategy positions you well to capitalize on current market dynamics while managing downside risk."
-    ];
-    return responses[Math.floor(Math.random() * responses.length)];
-  };
 
-  const getContextualSuggestions = (question) => {
-    const lowerQuestion = question.toLowerCase();
+
+  // const getAdvisorResponse = (question) => {
+  //   const lowerQuestion = question.toLowerCase();
     
-    if (lowerQuestion.includes('market')) {
-      return ["Sector rotation strategy", "Market timing tips", "Economic indicators", "Risk management"];
-    }
-    if (lowerQuestion.includes('tech')) {
-      return ["Fintech opportunities", "5G infrastructure plays", "Tech valuations", "Regulatory risks"];
-    }
-    if (lowerQuestion.includes('dividend')) {
-      return ["Dividend aristocrats", "Yield vs growth", "Payout sustainability", "Tax implications"];
-    }
+  //   if (lowerQuestion.includes('market') || lowerQuestion.includes('outlook')) {
+  //     return "The Nigerian market is showing strong momentum driven by banking sector performance and improved macroeconomic indicators. Key trends:\n\n📊 **NGX ASI Performance**: Up 18% YTD, outperforming emerging market peers\n\n🏦 **Banking Dominance**: Tier-1 banks leading with strong Q3 earnings\n\n📈 **Sector Rotation**: From defensive to cyclical stocks as confidence improves\n\n🎯 **My Take**: Current market conditions favor your balanced approach. Consider increasing exposure to quality growth names while maintaining defensive positions.";
+  //   }
     
-    return ["Portfolio review", "Risk assessment", "Market analysis", "Investment strategy"];
-  };
+  //   if (lowerQuestion.includes('tech') || lowerQuestion.includes('technology')) {
+  //     return "Nigerian tech stocks offer compelling growth opportunities but require careful selection:\n\n🚀 **Growth Drivers**:\n• Digital payments adoption accelerating\n• Fintech regulation becoming clearer\n• 5G infrastructure rollout\n\n⚠️ **Risks to Consider**:\n• Valuation concerns in some names\n• Regulatory uncertainty\n• FX exposure for dollar-revenue companies\n\n🎯 **Recommendation**: Limit tech to 15-20% of portfolio. Focus on profitable companies with naira revenue streams.";
+  //   }
+    
+  //   if (lowerQuestion.includes('inflation') || lowerQuestion.includes('hedge')) {
+  //     return "Inflation hedging in Nigeria requires a multi-asset approach:\n\n🛡️ **Inflation Hedges**:\n• Banking stocks (benefit from rising rates)\n• Consumer staples with pricing power\n• Real estate investment trusts (REITs)\n• Select commodity-linked stocks\n\n💡 **Strategy for You**:\nGiven your ₦150k monthly budget, focus on assets that can pass through inflation costs. Banking and consumer goods stocks in your current allocation already provide some protection.\n\n🎯 Consider adding REIT exposure for real estate inflation hedge.";
+  //   }
+    
+  //   if (lowerQuestion.includes('dividend') || lowerQuestion.includes('income')) {
+  //     return "Top dividend opportunities in the current market:\n\n👑 **Dividend Champions**:\n• GTB: 8.2% yield, 15-year track record\n• Zenith Bank: 7.8% yield, consistent payout\n• Nigerian Breweries: 6.5% yield, defensive\n• Dangote Cement: 5.2% yield, infrastructure play\n\n📊 **Dividend Safety Analysis**:\n✅ Banking dividends well-covered by earnings\n✅ Consumer goods showing resilient cash flows\n⚠️ Industrial dividends under pressure\n\n🎯 **For Your Portfolio**: Banking-heavy dividend strategy aligns perfectly with your income goals and risk profile.";
+  //   }
+    
+  //   // Default responses for other queries
+  //   const responses = [
+  //     "Based on your balanced risk profile and 3-year investment horizon, I recommend maintaining a diversified approach across sectors. The current market environment favors quality stocks with strong fundamentals.",
+  //     "Given your ₦150k monthly budget, dollar-cost averaging remains your best strategy. This approach reduces timing risk and allows you to benefit from market volatility over your 3-year timeline.",
+  //     "Your current allocation strategy is sound. The Nigerian market's recent performance in banking and consumer goods sectors aligns well with your investment objectives and risk tolerance.",
+  //     "For your investment timeline and goals, focus on companies with sustainable competitive advantages and consistent cash generation. This approach has historically outperformed in the Nigerian market.",
+  //     "Market conditions are creating opportunities for patient investors with your investment approach. Your balanced strategy positions you well to capitalize on current market dynamics while managing downside risk."
+  //   ];
+  //   return responses[Math.floor(Math.random() * responses.length)];
+  // };
+
+  // const getContextualSuggestions = (question) => {
+  //   const lowerQuestion = question.toLowerCase();
+    
+  //   if (lowerQuestion.includes('market')) {
+  //     return ["Sector rotation strategy", "Market timing tips", "Economic indicators", "Risk management"];
+  //   }
+  //   if (lowerQuestion.includes('tech')) {
+  //     return ["Fintech opportunities", "5G infrastructure plays", "Tech valuations", "Regulatory risks"];
+  //   }
+  //   if (lowerQuestion.includes('dividend')) {
+  //     return ["Dividend aristocrats", "Yield vs growth", "Payout sustainability", "Tax implications"];
+  //   }
+    
+  //   return ["Portfolio review", "Risk assessment", "Market analysis", "Investment strategy"];
+  // };
 
   const handleQuickQuestion = (question) => {
     setChatInput(question);
@@ -452,5 +520,6 @@ const AIAdvisor = () => {
         </div>
   );
 };
+
 
 export default AIAdvisor;

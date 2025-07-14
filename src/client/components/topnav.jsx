@@ -13,6 +13,7 @@ const TopNav = () => {
     { id: 'insights', name: 'Market Insights', icon: Activity },
     { id: 'chat', name: 'AI Advisor', icon: MessageCircle },
     { id: 'settings', name: 'Settings', icon: Settings }
+    
   ];
 
     return (

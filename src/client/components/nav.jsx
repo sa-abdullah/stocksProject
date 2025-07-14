@@ -42,7 +42,7 @@ const Navbar = () => {
                 </a>
               ))}
             </div>
-
+            
             <div className="hidden md:block">
               <button className="bg-gradient-to-r from-purple-600 to-blue-600 text-white px-6 py-2 rounded-full font-semibold hover:shadow-lg hover:-translate-y-0.5 transition-all duration-300"
                 onClick={() => navigate('/auth', {state: { hadSignedUp: false}})}
